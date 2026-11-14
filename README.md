@@ -4,6 +4,72 @@
 > **本叉改動摘要：** ① 雙卡一号/二号（上槽=一号、列表一号在上）② 螢幕擷取可自訂幀率 0–240 ③ 可選 `tools/gpu-bind` 指定運算卡  
 
 ---
+<div align="center">
+
+<img src="assets/veyra-app-icon.png" alt="Veyra" width="140">
+
+# Veyra
+
+### Real-time GPU Video Enhancement for Windows
+
+**Super Resolution · Denoising · HDR · Frame Generation · Capture · PS5 / Xbox / PC Streaming**
+
+Turn local video, capture cards and game streaming into one real-time GPU enhancement pipeline.
+
+<br>
+
+[![GitHub Stars](https://img.shields.io/github/stars/Likely7/Veyra-NRVideo?style=for-the-badge&logo=github&label=Stars)](https://github.com/Likely7/Veyra-NRVideo/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/Likely7/Veyra-NRVideo?style=for-the-badge&logo=github&label=Forks)](https://github.com/Likely7/Veyra-NRVideo/network/members)
+[![Latest Release](https://img.shields.io/github/v/release/Likely7/Veyra-NRVideo?style=for-the-badge&logo=github&label=Release)](https://github.com/Likely7/Veyra-NRVideo/releases/latest)
+[![Release Asset Downloads](https://img.shields.io/github/downloads/Likely7/Veyra-NRVideo/total?style=for-the-badge&logo=github&label=Release%20Downloads)](https://github.com/Likely7/Veyra-NRVideo/releases)
+[![License](https://img.shields.io/github/license/Likely7/Veyra-NRVideo?style=for-the-badge&label=License)](LICENSE)
+
+<br>
+
+**79K+ cumulative Veyra portable-package downloads** (79,332 as of 2026-11-08) · **103K+ downloads across all GitHub Release assets** (103,337 including source archives, checksums and images). [GitHub Releases](https://github.com/Likely7/Veyra-NRVideo/releases) · Counts are download events, not unique users.
+
+<br>
+
+[**⬇ Download Latest Release**](https://github.com/Likely7/Veyra-NRVideo/releases/latest)
+&nbsp;&nbsp;·&nbsp;&nbsp;
+[**📖 User Guide / Wiki**](https://github.com/Likely7/Veyra-NRVideo/wiki)
+&nbsp;&nbsp;·&nbsp;&nbsp;
+[**🇨🇳 简体中文**](README_CN.md)
+&nbsp;&nbsp;·&nbsp;&nbsp;
+[**🐛 Report an Issue**](https://github.com/Likely7/Veyra-NRVideo/issues)
+
+</div>
+
+<br>
+
+<p align="center">
+  <a href="https://github.com/Likely7/Veyra-NRVideo/blob/main/assets/veyra-2.0.0-promo.mp4">
+    <img src="assets/veyra-2.0.0-promo.webp" alt="Veyra 2.0 promo — click to play" width="100%">
+  </a>
+</p>
+
+<p align="center"><i>One engine. Any source. Real-time enhancement.</i></p>
+
+<br>
+
+<p align="center">
+  <img src="docs/images/2.0.0/professional-mode.png" alt="Veyra Professional Mode" width="100%">
+</p>
+
+<br>
+
+<h2 align="center">⭐ Star History</h2>
+
+<p align="center">
+  <img src="assets/star-history.svg" alt="Veyra Star History" width="900">
+</p>
+
+<p align="center">
+  <sub>Open source · GPL-3.0 · Windows 11 · C++ · DirectX 12 · NVIDIA & AMD</sub>
+</p>
+
+---
+
 **2.1.2 update:** dual SR, SR-then-downsample, NVIDIA Low Latency, experimental RX 7000 NR and capture/FG/audio/volume fixes. [Full update and migration](docs/RELEASE_NOTES_2.1.2.md).
 
 **2.1.1 historical release, 2026-10-27:** processed-picture recording with audio,90° playback rotation, per-layer NR percentage controls and export sizing, event-driven refresh/VRR/HDR queries, AMD HDR+NR handling, AA ordering, capture timestamp handling, NR shutdown, popup layout, screenshots and fullscreen fixes. [All changes since2.1.0](docs/RELEASE_NOTES_2.1.1.md).
