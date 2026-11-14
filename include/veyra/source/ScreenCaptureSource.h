@@ -10,7 +10,7 @@ struct ScreenCaptureOptions {
     ScreenTargetKind kind=ScreenTargetKind::Window;
     ScreenCaptureMethod method=ScreenCaptureMethod::Wgc;
     uint64_t target=0;
-    unsigned fps=0; // 0 follows the captured target's display refresh rate
+    unsigned fps=0; // 0: window → follow content present rate; monitor → follow display refresh
     bool cursor=true;
     // No yellow WGC capture border (Windows 11). Monitor captures always drop it;
     // a window capture drops it in 游戏模式. Carried in the URI's cursor field (bit 1).

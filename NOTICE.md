@@ -22,7 +22,8 @@ This fork does **not** claim ownership of the original Veyra project.
 
 1. **Dual identical GPUs:** PCI-bus ordered slot labels（一号 / 二号）, stable adapter ids, settings UI fixes so same-model cards do not dual-check; upper PCIe slot (smaller PCI bus on the tested board) = 一号, listed first.
 2. **Screen capture FPS:** custom numeric frame-rate limit (0–240 Hz), with commit-before-start so the value is applied when starting capture.
-3. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
+3. **Window follow rate:** when capturing a window with FPS follow (0), track the window’s live content present rate (duplicate WGC frames dropped), not the monitor refresh; monitor capture still follows display refresh.
+4. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
 
 ## Third-party / proprietary
 

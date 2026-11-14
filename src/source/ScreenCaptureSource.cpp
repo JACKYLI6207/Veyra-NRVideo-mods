@@ -17,6 +17,8 @@
 #include <array>
 #include <chrono>
 #include <climits>
+#include <cmath>
+#include <cstdint>
 #include <format>
 #include <sstream>
 #include <mutex>
@@ -214,20 +216,87 @@ struct ScreenCaptureSource::Impl {
         value=hdrMonitor(displayFactory.Get(),monitor);return true;
     }
     std::wstring message;DXGI_FORMAT format=DXGI_FORMAT_B8G8R8A8_UNORM;
+    // Window + follow (fps==0): WGC often emits at display cadence with duplicate
+    // content. Fingerprint a tiny center patch so "跟随" tracks the window's
+    // present rate instead of the monitor refresh.
+    static constexpr unsigned kFpW=32,kFpH=18;
+    ComPtr<ID3D11Texture2D> fpStaging;DXGI_FORMAT fpFormat=DXGI_FORMAT_UNKNOWN;
+    uint64_t lastFp=0;bool haveFp=false;
+    int64_t lastContentPts=0;double contentIntervalEma=0;unsigned contentSamples=0;
     ~Impl(){av_frame_free(&frame);}
-    int64_t interval()const{return 10000000LL*info.nominalRateDen/info.nominalRateNum;}
-    void updateRate(HMONITOR monitor){
-        auto rate=options.fps?DXGI_RATIONAL{options.fps,1}:monitorRate(monitor);
-        if(!rate.Numerator||!rate.Denominator){
-            if(info.nominalRateNum)return; // Retain the last known rate on a transient query failure.
-            rate={60,1};log::warn("screen","display refresh query failed; using 60 FPS limit");
-        }
+    bool followWindow()const{return options.fps==0&&options.kind==ScreenTargetKind::Window;}
+    int64_t interval()const{
+        if(!info.nominalRateNum||!info.nominalRateDen)return 10000000LL/60;
+        return 10000000LL*info.nominalRateDen/info.nominalRateNum;
+    }
+    void setRate(DXGI_RATIONAL rate,const char* reason,HMONITOR monitor){
+        if(!rate.Numerator||!rate.Denominator)return;
         if(info.nominalRateNum==int(rate.Numerator)&&info.nominalRateDen==int(rate.Denominator))return;
         info.nominalRateNum=int(rate.Numerator);info.nominalRateDen=int(rate.Denominator);
         info.averageFps=double(rate.Numerator)/rate.Denominator;nextPts=0;
         if(sequence)wasWaiting=true;
-        log::info("screen-rate",std::format("followDisplay={} limit={}/{} ({:.3f} Hz) monitor={}",options.fps==0,rate.Numerator,rate.Denominator,info.averageFps,uint64_t(monitor)));
+        log::info("screen-rate",std::format("{} followWindow={} followDisplay={} limit={}/{} ({:.3f} Hz) monitor={}",
+            reason,followWindow(),options.fps==0&&options.kind==ScreenTargetKind::Monitor,
+            rate.Numerator,rate.Denominator,info.averageFps,uint64_t(monitor)));
         applyMinUpdateInterval();
+    }
+    void updateRate(HMONITOR monitor){
+        if(options.fps){setRate({options.fps,1},"fixed",monitor);return;}
+        if(options.kind==ScreenTargetKind::Window){
+            if(contentSamples>=3&&contentIntervalEma>0){
+                const double hz=std::clamp(10000000.0/contentIntervalEma,1.0,240.0);
+                setRate({UINT(hz*1000.0+0.5),1000},"windowContent",monitor);
+            }else{
+                // No monitor rate: warm up MinUpdateInterval so WGC keeps every compose.
+                applyMinUpdateInterval();
+            }
+            return;
+        }
+        auto rate=monitorRate(monitor);
+        if(!rate.Numerator||!rate.Denominator){
+            if(info.nominalRateNum)return; // Retain the last known rate on a transient query failure.
+            rate={60,1};log::warn("screen","display refresh query failed; using 60 FPS limit");
+        }
+        setRate(rate,"monitor",monitor);
+    }
+    void ensureFingerprintStaging(){
+        if(fpStaging&&fpFormat==format)return;
+        fpStaging.Reset();fpFormat=format;haveFp=false;
+        D3D11_TEXTURE2D_DESC td{};td.Width=kFpW;td.Height=kFpH;td.MipLevels=td.ArraySize=1;td.Format=format;
+        td.SampleDesc.Count=1;td.Usage=D3D11_USAGE_STAGING;td.CPUAccessFlags=D3D11_CPU_ACCESS_READ;
+        check(device->CreateTexture2D(&td,nullptr,&fpStaging),"fingerprint staging");
+    }
+    uint64_t contentFingerprint(ID3D11Texture2D* src,unsigned left,unsigned top,unsigned cropW,unsigned cropH){
+        ensureFingerprintStaging();
+        const unsigned srcX=left+(cropW>kFpW?(cropW-kFpW)/2:0);
+        const unsigned srcY=top+(cropH>kFpH?(cropH-kFpH)/2:0);
+        const unsigned copyW=std::min(kFpW,cropW),copyH=std::min(kFpH,cropH);
+        D3D11_BOX box{srcX,srcY,0,srcX+copyW,srcY+copyH,1};
+        context->CopySubresourceRegion(fpStaging.Get(),0,0,0,0,src,0,&box);
+        D3D11_MAPPED_SUBRESOURCE mapped{};
+        check(context->Map(fpStaging.Get(),0,D3D11_MAP_READ,0,&mapped),"fingerprint map");
+        const unsigned bpp=format==DXGI_FORMAT_R16G16B16A16_FLOAT?8u:4u;
+        uint64_t h=14695981039346656037ull;
+        for(unsigned y=0;y<copyH;++y){
+            const auto* row=static_cast<const uint8_t*>(mapped.pData)+y*mapped.RowPitch;
+            for(unsigned x=0;x<copyW*bpp;++x){h^=row[x];h*=1099511628211ull;}
+        }
+        context->Unmap(fpStaging.Get(),0);
+        return h;
+    }
+    bool windowContentChanged(ID3D11Texture2D* src,unsigned left,unsigned top,unsigned cropW,unsigned cropH,int64_t pts){
+        const uint64_t fp=contentFingerprint(src,left,top,cropW,cropH);
+        if(haveFp&&fp==lastFp)return false;
+        if(haveFp&&lastContentPts&&pts>lastContentPts){
+            const double dt=double(pts-lastContentPts);
+            if(dt>=5000){ // ignore sub-0.5 ms jitter
+                contentIntervalEma=contentSamples?contentIntervalEma*0.82+dt*0.18:dt;
+                ++contentSamples;
+                info.averageFps=std::clamp(10000000.0/contentIntervalEma,1.0,240.0);
+                if(contentSamples==3||contentSamples%30==0)updateRate(nullptr);
+            }
+        }
+        lastFp=fp;haveFp=true;lastContentPts=pts;return true;
     }
     // WGC's default MinUpdateInterval (16 ms on Windows 11 24H2) skips a frame that
     // composes sooner than that after the last one: a 60 FPS window on a 165 Hz
@@ -236,10 +305,14 @@ struct ScreenCaptureSource::Impl {
     // limit are at least half a limit interval apart, so ask for that less 1 ms of
     // timestamp jitter; the deadline accumulator in read() still enforces the limit.
     void applyMinUpdateInterval(){
-        if(!session||!info.nominalRateNum)return;
+        if(!session)return;
         try{
             if(!winrt::Windows::Foundation::Metadata::ApiInformation::IsPropertyPresent(L"Windows.Graphics.Capture.GraphicsCaptureSession",L"MinUpdateInterval"))return;
-            const int64_t value=std::max<int64_t>(10000,interval()/2-10000);
+            // Window follow warm-up: ask for every compose until content FPS is known.
+            const int64_t value=followWindow()&&contentSamples<3
+                ?10000
+                :(info.nominalRateNum?std::max<int64_t>(10000,interval()/2-10000):0);
+            if(!value)return;
             const auto previous=session.MinUpdateInterval().count();
             if(previous==value)return;
             session.MinUpdateInterval(winrt::Windows::Foundation::TimeSpan{value});
@@ -335,7 +408,7 @@ bool ScreenCaptureSource::open(const SourceOpenDesc& desc){
         p.info.videoDecodePath=o.method==ScreenCaptureMethod::Wgc?"WGC shared GPU":"DXGI duplication shared GPU";
         p.info.containerName="screen";p.info.videoCodecName="GPU RGB";p.info.videoPixelFormatName=p.hdr?"scRGB FP16":"BGRA8 sRGB";p.color();
         p.clockOffset=host100ns()-qpc100ns();p.frame=av_frame_alloc();if(!p.frame)throw std::bad_alloc();
-        log::info("screen",std::format("opened method={} target={} size={}x{} hdr={} fpsLimit={:.3f} followDisplay={} cursor={} borderless={} pool=6 cpuReadback=0 audioCapture=0",unsigned(o.method),o.target,p.info.width,p.info.height,p.hdr,p.info.averageFps,o.fps==0,o.cursor,o.borderless||o.kind==ScreenTargetKind::Monitor));
+        log::info("screen",std::format("opened method={} target={} size={}x{} hdr={} fpsLimit={:.3f} followWindow={} followDisplay={} cursor={} borderless={} pool=6 cpuReadback=0 audioCapture=0",unsigned(o.method),o.target,p.info.width,p.info.height,p.hdr,p.info.averageFps,p.followWindow(),o.fps==0&&o.kind==ScreenTargetKind::Monitor,o.cursor,o.borderless||o.kind==ScreenTargetKind::Monitor));
         return true;
     }catch(const winrt::hresult_error& e){p.message=std::format(L"屏幕采集失败 0x{:08X}：{}",uint32_t(e.code()),e.message().c_str());log::error("screen",winrt::to_string(p.message));}
     catch(const std::exception& e){p.message=L"屏幕采集资源分配失败";log::error("screen",e.what());}
@@ -353,7 +426,8 @@ SourceReadStatus ScreenCaptureSource::read(pipeline::FramePacket& packet,const A
             const auto monitor=window?MonitorFromWindow(window,MONITOR_DEFAULTTONEAREST):reinterpret_cast<HMONITOR>(p.options.target);
             MONITORINFO mi{sizeof(mi)};
             if(!GetMonitorInfoW(monitor,&mi)){p.message=L"显示器已断开，请重新选择目标";return SourceReadStatus::Error;}
-            if(!p.options.fps)p.updateRate(monitor);
+            // Window follow measures content present rate; do not overwrite with the monitor.
+            if(!p.options.fps&&!p.followWindow())p.updateRate(monitor);
             bool hdr=p.hdr;
             if(p.displayHdr(monitor,hdr)&&hdr!=p.hdr){
                 p.hdr=hdr;p.format=hdr?DXGI_FORMAT_R16G16B16A16_FLOAT:DXGI_FORMAT_B8G8R8A8_UNORM;p.color();p.wasWaiting=true;
@@ -390,18 +464,24 @@ SourceReadStatus ScreenCaptureSource::read(pipeline::FramePacket& packet,const A
             auto access=captured.Surface().as<::Windows::Graphics::DirectX::Direct3D11::IDirect3DDxgiInterfaceAccess>();check(access->GetInterface(IID_PPV_ARGS(&texture)),"capture surface");
             pts=captured.SystemRelativeTime().count()+p.clockOffset;
         }
-        // Accumulate deadlines: comparing each jittery interval to an exact
-        // 1/60 would accidentally discard nearly half of a 60 Hz stream. The
-        // compositor timestamp of a busy desktop also lands a refresh or two late
-        // and the next one on time, so a frame may come a quarter interval early:
-        // with 0.5 ms a 60 FPS window lost about 2 FPS at the 60 limit (58.1,
-        // 2026-10-27). The accumulated deadline still holds the average to the limit.
-        if(pts<=p.lastPts||pts<p.nextPts-p.interval()/4){++p.metrics.dropped;return SourceReadStatus::Waiting;}
         D3D11_TEXTURE2D_DESC td{};texture->GetDesc(&td);
         if(td.Format!=p.format)throw winrt::hresult_error(E_UNEXPECTED,L"采集颜色格式发生变化，请重新连接");
         const auto& o=p.options;unsigned w=std::min(td.Width,unsigned(p.poolSize.Width)),h=std::min(td.Height,unsigned(p.poolSize.Height));
         if(w<=o.left+o.right||h<=o.top+o.bottom){p.message=L"窗口小于裁剪范围，等待尺寸恢复";p.wasWaiting=true;return SourceReadStatus::Waiting;}
         w-=o.left+o.right;h-=o.top+o.bottom;
+        // Window follow: drop compositor duplicates whose center patch did not change.
+        if(p.followWindow()){
+            if(pts<=p.lastPts){++p.metrics.dropped;return SourceReadStatus::Waiting;}
+            if(!p.windowContentChanged(texture.Get(),o.left,o.top,w,h,pts)){++p.metrics.dropped;return SourceReadStatus::Waiting;}
+        }else{
+            // Accumulate deadlines: comparing each jittery interval to an exact
+            // 1/60 would accidentally discard nearly half of a 60 Hz stream. The
+            // compositor timestamp of a busy desktop also lands a refresh or two late
+            // and the next one on time, so a frame may come a quarter interval early:
+            // with 0.5 ms a 60 FPS window lost about 2 FPS at the 60 limit (58.1,
+            // 2026-10-27). The accumulated deadline still holds the average to the limit.
+            if(pts<=p.lastPts||pts<p.nextPts-p.interval()/4){++p.metrics.dropped;return SourceReadStatus::Waiting;}
+        }
         av_frame_unref(p.frame);auto slot=p.acquire(w,h);if(!slot){++p.metrics.dropped;return SourceReadStatus::Waiting;}
         D3D11_BOX box{o.left,o.top,0,o.left+w,o.top+h,1};p.context->CopySubresourceRegion(slot->producer.Get(),0,0,0,0,texture.Get(),0,&box);
         check(p.context->Signal(p.producerFence.Get(),++p.signal),"producer Signal");p.context->Flush();
@@ -416,10 +496,12 @@ SourceReadStatus ScreenCaptureSource::read(pipeline::FramePacket& packet,const A
         if(w!=p.info.width||h!=p.info.height){
             packet.flags|=uint32_t(pipeline::FrameFlagBits::Resize);
             p.info.width=w;p.info.height=h;p.info.displayAspect=double(w)/h;
+            p.haveFp=false; // crop/size changed: re-seed the window content fingerprint
         }
         if(p.wasWaiting||p.lastPts&&pts-p.lastPts>std::max<int64_t>(p.interval()*2,1000000))packet.flags|=uint32_t(pipeline::FrameFlagBits::Discontinuity);
         packet.hardwareSurface={slot->consumer.Get(),0,p.fence.Get(),p.signal,w,h};
-        p.nextPts=std::max(p.nextPts+p.interval(),pts+p.interval()/2);
+        if(p.followWindow())p.nextPts=pts+std::max<int64_t>(p.interval()/2,1);
+        else p.nextPts=std::max(p.nextPts+p.interval(),pts+p.interval()/2);
         p.lastPts=pts;p.wasWaiting=false;p.message.clear();++p.metrics.delivered;
         // WGC's compositor timestamp can be ahead of the CPU callback. Keep
         // that signed delta in diagnostics, not in the ingress CPU duration.
@@ -435,7 +517,8 @@ void ScreenCaptureSource::close()noexcept{
     try{if(p_->pool)p_->pool.Close();}catch(...){}
     p_->session=nullptr;p_->pool=nullptr;p_->item=nullptr;p_->wrapped=nullptr;p_->duplication.Reset();
     if(p_->exclusion){restoreOwnWindows();p_->exclusion=false;}
-    av_frame_free(&p_->frame);p_->slots={};p_->fence.Reset();p_->producerFence.Reset();p_->context.Reset();p_->device.Reset();p_->consumer.Reset();p_->info.opened=false;
+    av_frame_free(&p_->frame);p_->slots={};p_->fpStaging.Reset();p_->haveFp=false;p_->contentSamples=0;p_->contentIntervalEma=0;p_->lastContentPts=0;
+    p_->fence.Reset();p_->producerFence.Reset();p_->context.Reset();p_->device.Reset();p_->consumer.Reset();p_->info.opened=false;
 }
 const SourceInfo& ScreenCaptureSource::info()const{return p_->info;}
 std::wstring ScreenCaptureSource::status()const{return p_->message;}

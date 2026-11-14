@@ -92,13 +92,18 @@ DialogLayer {
         }
         VRow {
             label: qsTr("帧率上限")
-            hint: qsTr("如果要开启 DLSS5（NR），建议帧率设置 60，减少 DLSS5 需要处理的画面量，减轻负担")
-            hintColor: Theme.err
+            hint: screenDialog.o.kind === 0
+                  ? qsTr("「跟随」= 按窗口画面实际更新收帧（游戏锁 40 约 40，不是显示器刷新率）")
+                  : qsTr("「跟随显示器」= 按该显示器刷新率收帧")
             hintBelow: true
             RowLayout {
                 spacing: 6
                 VSeg {
-                    options: [{ id: "0", label: qsTr("跟随") }, { id: "30", label: "30" }, { id: "60", label: "60" }, { id: "120", label: "120" }, { id: "144", label: "144" }, { id: "240", label: "240" }]
+                    options: [
+                        { id: "0", label: screenDialog.o.kind === 0 ? qsTr("跟随") : qsTr("跟随显示器") },
+                        { id: "30", label: "30" }, { id: "60", label: "60" },
+                        { id: "120", label: "120" }, { id: "144", label: "144" }, { id: "240", label: "240" }
+                    ]
                     current: {
                         const v = Number(screenDialog.o.fps)
                         return [0, 30, 60, 120, 144, 240].indexOf(v) >= 0 ? String(v) : ""
