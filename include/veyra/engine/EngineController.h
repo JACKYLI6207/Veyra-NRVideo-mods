@@ -250,7 +250,7 @@ public:
     remoteplay::ControllerFeedback xboxFeedback();
 #endif
     void stop();
-    void comparison(int mode,bool base,float split=.5f){comparisonMode_=mode;comparisonBase_=base;comparisonSplit_=std::clamp(split,0.0f,1.0f);}
+    void comparison(int mode,bool base,float split=.5f,bool swap=false){comparisonMode_=mode;comparisonBase_=base;comparisonSplit_=std::clamp(split,0.0f,1.0f);comparisonSwap_=swap;}
     void pause(bool p);
     bool setPlaybackRate(double rate);
     void setFullscreenMemoryProtection(bool enabled);
@@ -337,7 +337,7 @@ private:
     std::atomic<bool> fullscreenMemoryProtection_{false};
     std::atomic<bool> hdrCoverageObserved_{false};
     int pendingAudioTrack_=-1;uint64_t pendingAudioSession_=0; // mutex_
-    std::atomic<int> comparisonMode_{0};std::atomic<bool> comparisonBase_{false};std::atomic<float> comparisonSplit_{.5f};
+    std::atomic<int> comparisonMode_{0};std::atomic<bool> comparisonBase_{false};std::atomic<float> comparisonSplit_{.5f};std::atomic<bool> comparisonSwap_{false};
     // Guarded by mutex_: DLSSG MultiFrameCountMax of the active session.
     int fgMultiFrameMaxCap_=0;
     // Guarded by mutex_: XeSS provider ceiling of the active session (0 = unknown).

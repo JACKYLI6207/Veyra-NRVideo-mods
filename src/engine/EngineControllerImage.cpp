@@ -34,7 +34,7 @@ void EngineController::runLargeImage(HWND window,const sink::RgbaImage& original
     if(av_frame_get_buffer(frame.get(),32)<0){status(L"大图预览内存不足",true);return;}
     sink::RgbaImage enhanced;EnhancementSettings applied;applied.revision=0;
     pipeline::EnhanceGraph::FrameOutputs out;bool havePreview=false;
-    int lastComparison=-1;float lastSplit=-1;uint64_t previewRevision=0;PreviewView lastView;RECT lastClient{};
+    int lastComparison=-1;float lastSplit=-1;bool lastSwap=false;uint64_t previewRevision=0;PreviewView lastView;RECT lastClient{};
     while(!stop_){
         EnhancementSettings requested;std::wstring save;
         {std::lock_guard lock(mutex_);requested=desired_;if(!enhanced.pixels.empty())save.swap(savePath_);}
@@ -93,10 +93,10 @@ void EngineController::runLargeImage(HWND window,const sink::RgbaImage& original
                 auto& plan=snapshot_.metrics.resolution;plan.source=plan.base=plan.output={original.width,original.height};plan.nr={std::min(1280u,original.width)+256,std::min(1280u,original.height)+256};plan.flow=plan.fg={};plan.srApplied=false;plan.settingsRevision=applied.revision;
                 snapshot_.status=std::format(L"{}×{} · 分块NR（非整图上下文）· 保存保留完整尺寸",original.width,original.height);}
         }
-        const int comparison=comparisonMode_.load();const float split=comparisonSplit_.load();
+        const int comparison=comparisonMode_.load();const float split=comparisonSplit_.load();const bool swap=comparisonSwap_.load();
         const auto view=previewView();RECT client{};GetClientRect(window,&client);
         if(client.right<1||client.bottom<1){std::this_thread::sleep_for(std::chrono::milliseconds(16));continue;}
-        if(comparison!=lastComparison||split!=lastSplit||view!=lastView||client.right!=lastClient.right||client.bottom!=lastClient.bottom){
+        if(comparison!=lastComparison||split!=lastSplit||swap!=lastSwap||view!=lastView||client.right!=lastClient.right||client.bottom!=lastClient.bottom){
             // Source and enhanced use exactly the same coordinates. The full
             // image buffers, rather than the preview, remain the save source.
             for(uint32_t y=0;y<height;++y)for(uint32_t x=0;x<width;++x){
@@ -106,12 +106,12 @@ void EngineController::runLargeImage(HWND window,const sink::RgbaImage& original
                 auto* dst=frame->data[0]+size_t(y)*frame->linesize[0]+size_t(x)*4;
                 if(u<0||u>=1||v<0||v>=1){dst[0]=dst[1]=dst[2]=0;dst[3]=255;continue;}
                 const uint32_t sx=std::min(original.width-1,uint32_t(u*original.width)),sy=std::min(original.height-1,uint32_t(v*original.height));
-                const bool reference=comparison==1||(comparison==2&&u<split);
+                const bool reference=comparison==1||(comparison==2&&(swap?u>=split:u<split));
                 const auto& image=reference?original:enhanced;
                 memcpy(dst,image.pixels.data()+(size_t(sy)*image.width+sx)*4,4);
             }
             out={};if(!preview.process(frame.get(),0,true,out,++previewRevision)){status(L"大图预览上传失败",true);break;}
-            havePreview=true;lastComparison=comparison;lastSplit=split;lastView=view;lastClient=client;
+            havePreview=true;lastComparison=comparison;lastSplit=split;lastSwap=swap;lastView=view;lastClient=client;
         }
         if(havePreview&&!presenter.present(ctx,ring,preview,out.videoSlot,false,false,0,false,.5f,{},PreviewView{0,.5f,.5f})){status(L"大图呈现失败",true);break;}
         std::this_thread::sleep_for(std::chrono::milliseconds(16));

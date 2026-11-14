@@ -262,7 +262,10 @@ VPage {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 14
+        anchors.leftMargin: 14
+        anchors.topMargin: 14
+        // Leave room for Main's always-visible window chrome (min / max / close).
+        anchors.rightMargin: 14 + ((shell && !shell.fullscreen) ? (shell.windowChromeWidth || 0) : 0)
         readonly property bool compact: width < 972
         height: compact ? 72 : 32
 
@@ -699,7 +702,7 @@ VPage {
                     visible: veyra.hasSource && !veyra.isCapture
                     onTapped: proAudioMenu.openAt(proAudioButton, "up")
                 }
-                // Fullscreen, at the picture's bottom-right corner where players put it.
+                // Picture-only fullscreen (not the window maximize in the title chrome).
                 Item {
                     objectName: "pro-fullscreen"
                     implicitWidth: 28; implicitHeight: 28
@@ -707,7 +710,7 @@ VPage {
                     HoverHandler { id: fullHover; cursorShape: Qt.PointingHandCursor }
                     TapHandler { onTapped: root.requestFullscreen() }
                     ToolTip.visible: fullHover.hovered
-                    ToolTip.text: qsTr("全屏（双击画面 / F11）· 全屏后按 %1 打开快速调节").arg(veyra.gameMode ? veyra.shortcuts.gamePanel : "Home")
+                    ToolTip.text: qsTr("画面全屏（双击画面 / F11，只放大画面）· 全屏后按 %1 打开快速调节").arg(veyra.gameMode ? veyra.shortcuts.gamePanel : "Home")
                 }
             }
         }

@@ -185,7 +185,7 @@ bool VideoPresenter::refresh(ID3D12Device* device){
     }
     return true;
 }
-bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& sharedRing,pipeline::EnhanceGraph& graph,unsigned slot,bool generated,bool referencesValid,int comparison,bool baseReference,float split,pipeline::FrameIdentity identity,PreviewView view,int64_t sourcePts100ns,bool retainUnchanged) {
+bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& sharedRing,pipeline::EnhanceGraph& graph,unsigned slot,bool generated,bool referencesValid,int comparison,bool baseReference,float split,pipeline::FrameIdentity identity,PreviewView view,int64_t sourcePts100ns,bool retainUnchanged,bool comparisonSwap) {
     const auto reflexFrame=reflexFrame_;reflexFrame_=0;
     auto& ring=presentationQueue_?presentationRing_:sharedRing;
     auto* fence=presentationFence_?presentationFence_.Get():ctx.fence();
@@ -349,7 +349,12 @@ bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& 
         auto* reference=baseReference?graph.baseReference(slot):graph.sourceReference(slot);
         D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition.pResource=reference;b.Transition.Subresource=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;b.Transition.StateBefore=D3D12_RESOURCE_STATE_COMMON;b.Transition.StateAfter=D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;list->ResourceBarrier(1,&b);
         dims[2]=samplingFlags+curveFlag+(graph.hdr10Output()?4:graph.hdrOutput()?0:1)+(graph.videoHdrActive()?8:0);list->SetGraphicsRoot32BitConstants(0,16,dims,0);list->SetGraphicsRootDescriptorTable(1,{pass_.heap->GetGPUDescriptorHandleForHeapStart().ptr+size_t(pipeline::kOutputPoolSlots+slot+(baseReference?2:0))*pass_.increment});
-        if(comparison==2)rect.right=LONG(std::clamp((rc.right*.5f+(std::clamp(split,0.0f,1.0f)-view.centerX)*renderW)*sink_.bufferWidth()/rc.right,0.0f,float(sink_.bufferWidth())));list->RSSetScissorRects(1,&rect);list->DrawInstanced(3,1,0,0);
+        if(comparison==2){
+            const float splitX=std::clamp((rc.right*.5f+(std::clamp(split,0.0f,1.0f)-view.centerX)*renderW)*sink_.bufferWidth()/rc.right,0.0f,float(sink_.bufferWidth()));
+            // Default: left = reference (原画), right = enhanced. Swap flips the sides.
+            if(comparisonSwap)rect.left=LONG(splitX);else rect.right=LONG(splitX);
+        }
+        list->RSSetScissorRects(1,&rect);list->DrawInstanced(3,1,0,0);
         std::swap(b.Transition.StateBefore,b.Transition.StateAfter);list->ResourceBarrier(1,&b);
         if(veyra::log::verboseFrameLogs())veyra::log::info("comparison",std::format("real-frame source={} epoch={} revision={} reference={} mode={} split={} (same leased frame)",identity.sourceFrameId,identity.epoch,identity.settingsRevision,baseReference?"base":"input",comparison,split));
     }

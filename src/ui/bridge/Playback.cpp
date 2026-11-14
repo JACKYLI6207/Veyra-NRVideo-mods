@@ -330,7 +330,7 @@ void QmlPlayerBridge::setWindowMask(QObject* window, const QRectF& rect) {
 void QmlPlayerBridge::holdOriginal(bool held) {
     // Releasing the key returns to whatever the 显示 page chose (off or split).
     if (held) impl_->engine.comparison(1, false);
-    else impl_->engine.comparison(impl_->compareMode, impl_->compareBase, float(impl_->compareSplit));
+    else impl_->engine.comparison(impl_->compareMode, impl_->compareBase, float(impl_->compareSplit), impl_->compareSwap);
     veyra::log::info("ui-compare", held ? "hold original on" : "hold original off");
 }
 void QmlPlayerBridge::stepFrame(int direction) {

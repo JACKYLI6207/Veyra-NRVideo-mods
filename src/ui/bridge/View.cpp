@@ -177,8 +177,8 @@ int QmlPlayerBridge::compareMode() const { return impl_->compareMode; }
 void QmlPlayerBridge::setCompareMode(int value) {
     if (value < 0 || value > 2 || impl_->compareMode == value) return;
     impl_->compareMode = value;
-    if (!impl_->holdKeyDown) impl_->engine.comparison(value, impl_->compareBase, float(impl_->compareSplit));
-    veyra::log::info("ui-compare", std::format("mode={} base={} split={:.3f}", value, impl_->compareBase, impl_->compareSplit));
+    if (!impl_->holdKeyDown) impl_->engine.comparison(value, impl_->compareBase, float(impl_->compareSplit), impl_->compareSwap);
+    veyra::log::info("ui-compare", std::format("mode={} base={} swap={} split={:.3f}", value, impl_->compareBase, impl_->compareSwap, impl_->compareSplit));
     // Comparison shows real frames only (a generated frame has no original to set beside
     // it), so frame generation pauses while it is on. A field user left split compare on
     // for 24 minutes and reported "补帧无效" (logs9, 2026-10-01): say so.
@@ -190,10 +190,25 @@ bool QmlPlayerBridge::compareBase() const { return impl_->compareBase; }
 void QmlPlayerBridge::setCompareBase(bool value) {
     if (impl_->compareBase == value) return;
     impl_->compareBase = value;
-    if (!impl_->holdKeyDown) impl_->engine.comparison(impl_->compareMode, value, float(impl_->compareSplit));
+    if (!impl_->holdKeyDown) impl_->engine.comparison(impl_->compareMode, value, float(impl_->compareSplit), impl_->compareSwap);
+    emit compareChanged();
+}
+bool QmlPlayerBridge::compareSwap() const { return impl_->compareSwap; }
+void QmlPlayerBridge::setCompareSwap(bool value) {
+    if (impl_->compareSwap == value) return;
+    impl_->compareSwap = value;
+    if (!impl_->holdKeyDown) impl_->engine.comparison(impl_->compareMode, impl_->compareBase, float(impl_->compareSplit), value);
     emit compareChanged();
 }
 double QmlPlayerBridge::compareSplit() const { return impl_->compareSplit; }
+void QmlPlayerBridge::setCompareSplit(double fraction) {
+    if (!std::isfinite(fraction)) return;
+    const float next = float(std::clamp(fraction, 0.0, 1.0));
+    if (impl_->compareSplit == next) return;
+    impl_->compareSplit = next;
+    if (!impl_->holdKeyDown) impl_->engine.comparison(impl_->compareMode, impl_->compareBase, next, impl_->compareSwap);
+    emit compareChanged();
+}
 void QmlPlayerBridge::setCompareSplitAt(double fx) {
     // 1.4.4 AppShell: the split is a fraction of the displayed picture, which is
     // letterboxed and may be zoomed/panned inside the host.
@@ -206,9 +221,7 @@ void QmlPlayerBridge::setCompareSplitAt(double fx) {
     float contentWidth = float(r.right);
     if (e.width && e.height) contentWidth = view.renderedSize(float(r.right),float(r.bottom),float(e.width),float(e.height)).first;
     const float left = r.right * .5f - contentWidth * view.centerX;
-    i.compareSplit = std::clamp((float(fx) * r.right - left) / std::max(1.0f, contentWidth), 0.0f, 1.0f);
-    if (!i.holdKeyDown) i.engine.comparison(i.compareMode, i.compareBase, float(i.compareSplit));
-    emit compareChanged();
+    setCompareSplit((float(fx) * r.right - left) / std::max(1.0f, contentWidth));
 }
 int QmlPlayerBridge::aspectMode() const { return impl_->screenFillActive ? 2 : impl_->aspectMode; }
 void QmlPlayerBridge::setAspectMode(int value) {

@@ -1,7 +1,7 @@
 ﻿> **非官方修改版**（維護：[JACKYLI6207](https://github.com/JACKYLI6207)）  
 > **上游：** [Likely7/Veyra-NRVideo](https://github.com/Likely7/Veyra-NRVideo)（GPL-3.0）  
 > **請先閱讀：** [NOTICE.md](NOTICE.md)（來源聲明）｜[README_FORK.zh-TW.md](README_FORK.zh-TW.md)（繁中修改說明）  
-> **本叉改動摘要：** ① 雙卡一号/二号（上槽=一号、列表一号在上）② 螢幕擷取可自訂幀率 0–240 ③ 視窗「跟隨」跟視窗實際幀率（非顯示器）④ 可選 `tools/gpu-bind` 指定運算卡  
+> **本叉改動摘要：** ① 雙卡一号/二号 ② 自訂擷取幀率 ③ 視窗跟隨實際幀率 ④ 分屏百分比／換邊 ⑤ 整窗最大化（含功能欄）⑥ `tools/gpu-bind`  
 
 ---
 <div align="center">

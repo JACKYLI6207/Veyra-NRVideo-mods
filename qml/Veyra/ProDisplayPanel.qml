@@ -14,12 +14,46 @@ ColumnLayout {
         ProPresentationRows { }
         VRow {
             label: qsTr("原画 / 增强对比")
-            hint: (veyra.compareMode === 2 ? qsTr("在画面上按住左键拖动分割线：左边原画、右边增强。") : "") + (veyra.compareMode !== 0 ? qsTr("对比时补帧暂停，关闭对比后恢复") : "")
+            hint: (veyra.compareMode === 2
+                   ? (veyra.compareSwap
+                      ? qsTr("在画面上按住左键拖动分割线：左边增强、右边原画。也可在下方用百分比调节。")
+                      : qsTr("在画面上按住左键拖动分割线：左边原画、右边增强。也可在下方用百分比调节。"))
+                   : "") + (veyra.compareMode !== 0 ? qsTr("对比时补帧暂停，关闭对比后恢复") : "")
             VSeg {
                 objectName: "display-compare"
                 options: [{ id: "0", label: qsTr("关闭", "off") }, { id: "2", label: qsTr("分屏") }, { id: "1", label: qsTr("只看原画") }]
                 current: String(veyra.compareMode)
                 onPicked: id => veyra.compareMode = Number(id)
+            }
+        }
+        VRow {
+            label: qsTr("分割位置")
+            hint: veyra.compareSwap
+                  ? qsTr("0% = 全原画，100% = 全增强；左边增强、右边原画")
+                  : qsTr("0% = 全增强，100% = 全原画；左边原画、右边增强")
+            value: Math.round(veyra.compareSplit * 100) + "%"
+            visible: veyra.compareMode === 2
+            VSlider {
+                objectName: "display-compare-split"
+                implicitWidth: 120
+                valueFromModel: true
+                resettable: true
+                defaultValue: 50
+                from: 0
+                to: 100
+                stepSize: 1
+                value: Math.round(veyra.compareSplit * 100)
+                onMoved: value => veyra.compareSplit = value / 100
+            }
+        }
+        VRow {
+            label: qsTr("原画 / 增强换边")
+            hint: qsTr("对调左右：默认左原画右增强；开启后左增强右原画")
+            visible: veyra.compareMode === 2
+            VSwitch {
+                objectName: "display-compare-swap"
+                checked: veyra.compareSwap === true
+                onToggled: checked => veyra.compareSwap = checked
             }
         }
         VRow {

@@ -637,6 +637,7 @@ struct QmlPlayerBridge::Impl {
     engine::PresentationSettings presentation;
     int compareMode = 0;
     bool compareBase = false;
+    bool compareSwap = false;
     double compareSplit = 0.5;
     int aspectMode = 0, aspectApplied = 0;
     uint64_t aspectSession = 0;

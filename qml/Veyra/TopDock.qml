@@ -292,11 +292,12 @@ Item {
 
             Rectangle { implicitWidth: 1; implicitHeight: 16; color: Qt.rgba(1, 1, 1, 0.14) }
 
-            // Window controls: minimize, maximize/restore, close.
+            // Window controls: minimize, maximize/restore (whole app window), close.
+            // Distinct from the picture "max" (fullscreen / F11) on the transport bar.
             Repeater {
                 model: [
                     { id: "min", icon: "minus", tip: qsTr("最小化") },
-                    { id: "max", icon: "max", tip: dockRoot.maximized ? qsTr("还原") : qsTr("最大化") },
+                    { id: "max", icon: dockRoot.maximized ? "copy" : "square", tip: dockRoot.maximized ? qsTr("还原") : qsTr("最大化窗口") },
                     { id: "close", icon: "x", tip: qsTr("关闭") }
                 ]
                 delegate: Item {

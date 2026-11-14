@@ -1918,7 +1918,7 @@ void EngineController::run(HWND window,std::wstring path,PlayerOptions options,s
                     presenter.cancelReflexInput();
                     if(audioStarted)audioPipe.setPaused(true);wasPaused=true;
                     const bool referencesValid=hasOutput&&out.batch.count&&out.batch.frames[out.batch.count-1].lease&&out.batch.frames[out.batch.count-1].lease->referencesValid;
-                    if(hasOutput&&!presenter.present(ctx,ring,*graph,out.videoSlot,false,referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,out.batch.identity,previewView(),-1,true)){if(recoverXessPresentation())continue;status(L"画面呈现失败",true);break;}
+                    if(hasOutput&&!presenter.present(ctx,ring,*graph,out.videoSlot,false,referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,out.batch.identity,previewView(),-1,true,comparisonSwap_)){if(recoverXessPresentation())continue;status(L"画面呈现失败",true);break;}
                     if(hasOutput&&graph->resolveGeneration(out))completeReset(out.batch.identity);
                     // Poll live view/size changes at 50 ms; unchanged flip
                     // buffers are retained without commands or another Present.
@@ -2908,7 +2908,7 @@ void EngineController::run(HWND window,std::wstring path,PlayerOptions options,s
                             const auto begin=Clock::now();const auto before=presenter.submittedCount();
                             presenter.reflexFrame(watch->reflexFrame);
                             presenter.observeHdrCoverage(hdrCoverageObserved_.load());
-                            if(!presenter.present(ctx,ring,*graph,item.lease->slot,generated,item.lease->referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,item.identity,previewView(),item.pts100ns))return {State::Failed};
+                            if(!presenter.present(ctx,ring,*graph,item.lease->slot,generated,item.lease->referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,item.identity,previewView(),item.pts100ns,false,comparisonSwap_))return {State::Failed};
                             const auto presentEndHost=host100ns();
                             const double returnDeviation=deviationValid?nowMs()-itemPtsMs:0;
                             item.lease->consumerFence=presenter.consumerFenceValue(ring.lastSignaledValue());const bool didPresent=presenter.submittedCount()>before;s.blit=presenter.blitTiming(ctx.fence());
@@ -3036,7 +3036,7 @@ void EngineController::run(HWND window,std::wstring path,PlayerOptions options,s
                     for(auto& item:out.batch.frames){
                         if(!item.lease)continue;
                         const auto begin=Clock::now();const auto before=presenter.submittedCount();
-                        if(!presenter.present(ctx,ring,*graph,item.lease->slot,false,item.lease->referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,item.identity,previewView(),item.pts100ns)){presentFailed=true;break;}
+                        if(!presenter.present(ctx,ring,*graph,item.lease->slot,false,item.lease->referencesValid,comparisonMode_,comparisonBase_,comparisonSplit_,item.identity,previewView(),item.pts100ns,false,comparisonSwap_)){presentFailed=true;break;}
                         item.lease->consumerFence=presenter.consumerFenceValue(ring.lastSignaledValue());framePresentMs+=elapsedMs(begin);
                         frameFlow->cpu(diagnostics::CpuStage::Present,elapsedMs(begin),host100ns());
                         if(presenter.submittedCount()>before){++submitted;frameFlow->presented(false,item.lease->consumerFence,host100ns());}

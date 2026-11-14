@@ -363,7 +363,10 @@ VPage {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.margins: 14
+        anchors.leftMargin: 14
+        anchors.topMargin: 14
+        anchors.bottomMargin: 14
+        anchors.rightMargin: 14 + ((shell && !shell.fullscreen) ? (shell.windowChromeWidth || 0) : 0)
         spacing: 0
         states: State {
             name: "overlay"

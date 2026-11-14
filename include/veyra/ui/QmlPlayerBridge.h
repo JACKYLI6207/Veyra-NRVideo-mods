@@ -489,7 +489,8 @@ class QmlPlayerBridge : public QObject {
     // split 0..1 of the picture. Aspect 0 适应 1 原始 2 填充.
     Q_PROPERTY(int compareMode READ compareMode WRITE setCompareMode NOTIFY compareChanged)
     Q_PROPERTY(bool compareBase READ compareBase WRITE setCompareBase NOTIFY compareChanged)
-    Q_PROPERTY(double compareSplit READ compareSplit NOTIFY compareChanged)
+    Q_PROPERTY(bool compareSwap READ compareSwap WRITE setCompareSwap NOTIFY compareChanged)
+    Q_PROPERTY(double compareSplit READ compareSplit WRITE setCompareSplit NOTIFY compareChanged)
     Q_PROPERTY(int aspectMode READ aspectMode WRITE setAspectMode NOTIFY compareChanged)
     // Measured audio/video skew of a live source (ms); unknown otherwise.
     Q_PROPERTY(double audioSkewMs READ audioSkewMs NOTIFY snapshotChanged)
@@ -1166,7 +1167,10 @@ public:
     void setCompareMode(int value);
     bool compareBase() const;
     void setCompareBase(bool value);
+    bool compareSwap() const;
+    void setCompareSwap(bool value);
     double compareSplit() const;
+    void setCompareSplit(double fraction); // 0..1 content fraction (slider / percent)
     int aspectMode() const;
     void setAspectMode(int value);
     double audioSkewMs() const;

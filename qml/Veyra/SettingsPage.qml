@@ -121,7 +121,7 @@ VPage {
         anchors.left: parent.left
         anchors.leftMargin: 14 + 220 + 10
         anchors.right: parent.right
-        anchors.rightMargin: 14
+        anchors.rightMargin: 14 + ((shell && !shell.fullscreen) ? (shell.windowChromeWidth || 0) : 0)
         anchors.top: parent.top
         anchors.topMargin: 14
         anchors.bottom: parent.bottom

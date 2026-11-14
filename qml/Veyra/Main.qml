@@ -54,19 +54,44 @@ Window {
     readonly property var test: typeof vyTest !== "undefined" ? vyTest : ({})
     readonly property real testAspect: test.aspect !== undefined ? test.aspect : 0
     readonly property bool cinema: page === "min"
-    // Maximized behaves like fullscreen for geometry: the screen owns the size,
-    // so the cinema aspect rule must not fight the window manager.
-    readonly property bool maximized: visibility === Window.Maximized
+    // Frameless Qt on this Windows build turns Window.Maximized into FullScreen
+    // (taskbar mark flips true; video fills 0,0 and Pro panels vanish). Track a
+    // manual "fill the monitor work area" state instead, and keep visibility Windowed
+    // so 专业/节点 keep their side and bottom panels.
+    property bool windowMaximized: false
+    property real restoreX: 80
+    property real restoreY: 80
+    property real restoreW: 1280
+    property real restoreH: 800
+    readonly property bool maximized: windowMaximized
     // Use visibility directly: leaving fullscreen clears fullTarget before the
-    // Maximized binding settles. The cinema animation must not resize a screen
-    // sized window during that transition.
-    readonly property bool screenSized: fullTarget || fullRestorePending || visibility === Window.FullScreen || visibility === Window.Maximized
+    // restore settles. The cinema animation must not resize a screen-sized window.
+    readonly property bool screenSized: fullTarget || fullRestorePending || visibility === Window.FullScreen || windowMaximized
+    // Always-visible title-bar chrome width (min / max / close). Pages reserve this
+    // on the right so headers do not collide with the buttons.
+    readonly property int windowChromeWidth: 102
+    function applyWindowMaximized(on) {
+        if (on) {
+            if (!windowMaximized) {
+                restoreX = x; restoreY = y; restoreW = width; restoreH = height
+            }
+            const g = veyra.screenAvailableAt(Math.round(x + width / 2), Math.round(y + 8))
+            windowMaximized = true
+            if (visibility !== Window.Windowed) visibility = Window.Windowed
+            x = g.x; y = g.y; width = Math.max(720, g.width); height = Math.max(400, g.height)
+            veyra.logUi("ui-window", "maximized=true avail=" + g.width + "x" + g.height + "@" + g.x + "," + g.y)
+        } else if (windowMaximized) {
+            windowMaximized = false
+            x = restoreX; y = restoreY; width = restoreW; height = restoreH
+            veyra.logUi("ui-window", "maximized=false")
+        }
+        Qt.callLater(function () { videoHost.syncRect() })
+    }
     function toggleMaximized() {
-        // The dock's restore button must also leave fullscreen, using the same
-        // saved window state and cleanup as F11 / the transport button.
+        // Leaving picture-fullscreen uses the same cleanup as F11; then (re)apply
+        // the windowed work-area maximize if that was the prior chrome state.
         if (fullscreen) { toggleFullscreen(); return }
-        visibility = maximized ? Window.Windowed : Window.Maximized
-        veyra.logUi("ui-window", "maximized=" + (visibility === Window.Maximized))
+        applyWindowMaximized(!windowMaximized)
     }
     Binding { target: Theme; property: "reduced"; value: veyra.reducedMotion || root.test.reducedMotion === true }
     Binding { target: Theme; property: "accentName"; value: veyra.preferences.accent || "orange" }
@@ -131,7 +156,8 @@ Window {
     // mode exists to avoid.
     onHeightChanged: videoHost.syncRect()
     onMaximizedChanged: {
-        if (visibility === Window.Windowed && cinema && !fullTarget && !fullRestorePending) height = Math.round(pictureHeight)
+        if (!maximized && cinema && !fullTarget && !fullRestorePending && visibility === Window.Windowed)
+            height = Math.round(pictureHeight)
         videoHost.syncRect()
     }
     onPageChanged: {
@@ -343,10 +369,66 @@ Window {
         onRequestMinimize: root.showMinimized()
         onRequestMaximize: root.toggleMaximized()
         onRequestClose: root.close()
-        onRequestMove: if (!root.fullscreen) root.startSystemMove()
+        onRequestMove: if (!root.fullscreen && !root.maximized) root.startSystemMove()
         pillToggleVisible: veyra.hasSource && (root.page === "min" || root.fullscreen)
         pillHidden: root.pillHidden
         onRequestTogglePill: root.setPillHidden(!root.pillHidden)
+    }
+
+    // Always-visible frameless window chrome (top-right). Maximizes the whole app
+    // window including side panels — not the picture-only fullscreen (F11 / transport).
+    Row {
+        id: windowChrome
+        objectName: "window-chrome"
+        z: 50
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 10
+        spacing: 2
+        visible: !root.fullscreen && !veyra.passthroughActive
+        Repeater {
+            model: [
+                { id: "min", icon: "minus", tip: qsTr("最小化") },
+                { id: "max", icon: root.maximized ? "copy" : "square", tip: root.maximized ? qsTr("还原") : qsTr("最大化窗口") },
+                { id: "close", icon: "x", tip: qsTr("关闭") }
+            ]
+            delegate: Item {
+                id: chromeBtn
+                required property var modelData
+                objectName: "window-chrome-" + modelData.id
+                width: 32
+                height: 28
+                scale: chromeTap.pressed ? 0.9 : 1
+                Behavior on scale { NumberAnimation { duration: Theme.d(200); easing.bezierCurve: Theme.spring } }
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: chromeHover.hovered
+                           ? (chromeBtn.modelData.id === "close" ? Qt.rgba(1, 0.365, 0.365, 0.22) : Theme.card2)
+                           : "transparent"
+                    Behavior on color { ColorAnimation { duration: Theme.d(150) } }
+                }
+                VIcon {
+                    anchors.centerIn: parent
+                    name: chromeBtn.modelData.icon
+                    size: 13
+                    color: chromeHover.hovered && chromeBtn.modelData.id === "close" ? "#FF8A8A" : Theme.t2
+                }
+                HoverHandler { id: chromeHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    id: chromeTap
+                    onTapped: {
+                        if (chromeBtn.modelData.id === "min") root.showMinimized()
+                        else if (chromeBtn.modelData.id === "max") root.toggleMaximized()
+                        else root.close()
+                    }
+                }
+                ToolTip.visible: chromeHover.hovered
+                ToolTip.delay: 400
+                ToolTip.text: chromeBtn.modelData.tip
+            }
+        }
     }
 
     // Frameless window: the system resizes from 6px borders and 12px corners.
@@ -396,9 +478,8 @@ Window {
     // Set before the visibility changes: Windows resizes the window first, and the
     // cinema rule would otherwise snap that fullscreen size back to the film.
     property bool fullTarget: false
-    property int fullRestoreVisibility: Window.Windowed
-    // Windows may briefly report Windowed while restoring a maximized window.
-    // Keep cinema sizing out of that native transition, without a polling timer.
+    property bool fullRestoreMaximized: false
+    // Keep cinema sizing out of the fullscreen exit transition.
     property bool fullRestorePending: false
     property bool fullLocked: false
     // Fullscreen quick-adjust panel (Home): the professional mode's own controls
@@ -492,13 +573,17 @@ Window {
         }
         fullLocked = false
         if (!fullscreen) {
-            fullRestoreVisibility = maximized ? Window.Maximized : Window.Windowed
+            fullRestoreMaximized = windowMaximized
             fullTarget = true
             visibility = Window.FullScreen
         } else {
-            fullRestorePending = fullRestoreVisibility === Window.Maximized
+            fullRestorePending = fullRestoreMaximized
             fullTarget = false
-            visibility = fullRestoreVisibility
+            visibility = Window.Windowed
+            if (fullRestoreMaximized) {
+                windowMaximized = false
+                applyWindowMaximized(true)
+            }
             Qt.callLater(function() { root.fullRestorePending = false })
         }
         veyra.logUi("ui-fullscreen", "enabled=" + fullscreen)

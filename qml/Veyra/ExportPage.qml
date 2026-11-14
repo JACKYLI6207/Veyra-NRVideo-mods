@@ -420,7 +420,11 @@ VPage {
             // .exp .compare .lb: which side is which. Each label is cut out of the
             // native video (videoCover) so it shows above the picture.
             Repeater {
-                model: veyra.compareMode === 2 && veyra.hasSource ? [{ t: qsTr("原画"), left: true }, { t: qsTr("增强后（预览）"), left: false }] : []
+                model: veyra.compareMode === 2 && veyra.hasSource
+                       ? (veyra.compareSwap
+                          ? [{ t: qsTr("增强后（预览）"), left: true }, { t: qsTr("原画"), left: false }]
+                          : [{ t: qsTr("原画"), left: true }, { t: qsTr("增强后（预览）"), left: false }])
+                       : []
                 delegate: Rectangle {
                     required property var modelData
                     objectName: "export-compare-label-" + (modelData.left ? "left" : "right")
