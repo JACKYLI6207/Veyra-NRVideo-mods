@@ -345,10 +345,16 @@ bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& 
         list->SetGraphicsRootDescriptorTable(1,{pass_.heap->GetGPUDescriptorHandleForHeapStart().ptr+size_t(slot+(generated?2:0))*pass_.increment});
         probeCurve_=hdrCurve;probeIdentity_=identity;probeIssued=true;
     }
-    if(comparison&&!generated&&referencesValid){
-        auto* reference=baseReference?graph.baseReference(slot):graph.sourceReference(slot);
+    // Mode 1 (只看原画): real frames only. Mode 2 (分屏): enhanced side may be a
+    // generated FG frame; the original side keeps a real-frame source/base reference.
+    // Generated pool slots are not compare-ref slots — only parity 0/1 retain them.
+    // While interpolating A→B, hold A's reference (1-parity) so the original half
+    // does not flash the full enhanced/generated blit between real presents.
+    if(comparison&&referencesValid&&(!generated||comparison==2)){
+        const unsigned refSlot=generated?(1u-(slot&1u)):slot;
+        auto* reference=baseReference?graph.baseReference(refSlot):graph.sourceReference(refSlot);
         D3D12_RESOURCE_BARRIER b{};b.Type=D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;b.Transition.pResource=reference;b.Transition.Subresource=D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;b.Transition.StateBefore=D3D12_RESOURCE_STATE_COMMON;b.Transition.StateAfter=D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;list->ResourceBarrier(1,&b);
-        dims[2]=samplingFlags+curveFlag+(graph.hdr10Output()?4:graph.hdrOutput()?0:1)+(graph.videoHdrActive()?8:0);list->SetGraphicsRoot32BitConstants(0,16,dims,0);list->SetGraphicsRootDescriptorTable(1,{pass_.heap->GetGPUDescriptorHandleForHeapStart().ptr+size_t(pipeline::kOutputPoolSlots+slot+(baseReference?2:0))*pass_.increment});
+        dims[2]=samplingFlags+curveFlag+(graph.hdr10Output()?4:graph.hdrOutput()?0:1)+(graph.videoHdrActive()?8:0);list->SetGraphicsRoot32BitConstants(0,16,dims,0);list->SetGraphicsRootDescriptorTable(1,{pass_.heap->GetGPUDescriptorHandleForHeapStart().ptr+size_t(pipeline::kOutputPoolSlots+refSlot+(baseReference?2:0))*pass_.increment});
         if(comparison==2){
             const float splitX=std::clamp((rc.right*.5f+(std::clamp(split,0.0f,1.0f)-view.centerX)*renderW)*sink_.bufferWidth()/rc.right,0.0f,float(sink_.bufferWidth()));
             // Default: left = reference (原画), right = enhanced. Swap flips the sides.
@@ -356,7 +362,7 @@ bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& 
         }
         list->RSSetScissorRects(1,&rect);list->DrawInstanced(3,1,0,0);
         std::swap(b.Transition.StateBefore,b.Transition.StateAfter);list->ResourceBarrier(1,&b);
-        if(veyra::log::verboseFrameLogs())veyra::log::info("comparison",std::format("real-frame source={} epoch={} revision={} reference={} mode={} split={} (same leased frame)",identity.sourceFrameId,identity.epoch,identity.settingsRevision,baseReference?"base":"input",comparison,split));
+        if(veyra::log::verboseFrameLogs())veyra::log::info("comparison",std::format("source={} epoch={} revision={} reference={} mode={} split={} generated={} refSlot={} (same leased frame)",identity.sourceFrameId,identity.epoch,identity.settingsRevision,baseReference?"base":"input",comparison,split,generated,refSlot));
     }
     for(auto& b:barriers)std::swap(b.Transition.StateBefore,b.Transition.StateAfter);
     if(copyBeforePresent_)barriers[1].Transition.StateAfter=D3D12_RESOURCE_STATE_COPY_SOURCE;
@@ -393,6 +399,9 @@ bool VideoPresenter::present(gfx::D3D12DeviceContext& ctx,gfx::CommandSlotRing& 
         // A history break is not a user disable: the graph supplies initialized
         // zero motion in this case. Keep the current color in XeSS history so
         // the next continuous frame can interpolate without another warmup.
+        // XeSS interpolates the whole swapchain present. Split compare must not
+        // enable it or the original half is also interpolated (visible flicker).
+        // Application FG (DLSS/VFG/FSR) still runs on the enhanced half only.
         const bool enabled=regionVisible&&!generated&&!comparison&&graph.presentMotion(slot)&&graph.presentDepth()&&identity.sourceFrameId!=lastXessIdentity_.sourceFrameId&&!xessGenerationSuppressed_;
         const bool reset=!graph.presentMotionValid(slot)||!xessWasEnabled_||identity.epoch!=lastXessIdentity_.epoch||identity.settingsRevision!=lastXessIdentity_.settingsRevision||graph.motionPreviousSource(slot)!=lastXessIdentity_.sourceFrameId||view.quarterTurns()!=previousXessView_.quarterTurns();
         // frameRenderTime is the provider's only independent period estimate on

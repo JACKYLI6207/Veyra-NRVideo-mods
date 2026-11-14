@@ -419,11 +419,12 @@ void QmlPlayerBridge::updateRunStatus() {
     }
     else if(i.presentation.enabled)options<<(s.running&&!s.presentationEffective.enabled?tr("低延迟队列 · 当前未生效"):tr("低延迟队列"));
     if(!s.capture&&std::abs(s.playbackRate-1.0)>.001)options<<tr("播放速度 %1×").arg(s.playbackRate,0,'f',2);
-    if(i.compareMode!=0)options<<tr("画面对比 · 补帧暂停");
+    if(i.compareMode==1)options<<tr("只看原画 · 补帧暂停");
+    else if(i.compareMode==2)options<<tr("分屏对比 · 增强侧补帧");
     QStringList detail;
     // Live output hint: also shown under the 倍率 control (fgDisplayHint).
     QString fgHint;
-    if (s.running && !s.image && s.applied.multiplier > 1 && i.compareMode == 0 && s.displayFgSuggestion > 0 &&
+    if (s.running && !s.image && s.applied.multiplier > 1 && i.compareMode != 1 && s.displayFgSuggestion > 0 &&
         s.displayFgContentFps > 0 && s.displayFgRefreshHz > 0) {
         const double output = s.displayFgContentFps * s.applied.multiplier;
         fgHint = s.displayFgSuggestion == 1
@@ -447,7 +448,7 @@ void QmlPlayerBridge::updateRunStatus() {
                           .arg(backend);
         }
         else detail << tr("未补帧");
-        if (s.applied.multiplier > 1 && impl_->compareMode != 0) detail << tr("补帧暂停");
+        if (s.applied.multiplier > 1 && impl_->compareMode == 1) detail << tr("补帧暂停");
         // Live output hint (DisplayFgBudget.h): a suggestion only, the
         // multiplier stays the user's choice.
         else if (!fgHint.isEmpty()) detail << fgHint;
@@ -457,7 +458,7 @@ void QmlPlayerBridge::updateRunStatus() {
         // costs about the same at any resolution, so what fits follows from its
         // measured cost, the rest of the chain and the source interval; the
         // display refresh caps what can be shown. A hint only: no setting changes.
-        if (s.applied.multiplier > 1 && s.applied.frameGenerationBackend == engine::FrameGenerationBackend::Vfg && i.compareMode == 0) {
+        if (s.applied.multiplier > 1 && s.applied.frameGenerationBackend == engine::FrameGenerationBackend::Vfg && i.compareMode != 1) {
             const double source = rate.contentFps;
             const auto perRun = f.gpuTiming[size_t(diagnostics::GpuStage::Fg1)].p95;
             const auto batch = f.gpuTiming[size_t(diagnostics::GpuStage::FgBatch)].p95;

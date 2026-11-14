@@ -308,6 +308,9 @@ class QmlPlayerBridge : public QObject {
     // Submit FPS only. There is deliberately no "display FPS": the user asked
     // for it to be left out (MSI Afterburner reads the real panel rate, and a
     // number we cannot measure must not be shown as if we measured it).
+    // processedFps = real source frames completed (原画侧); submitFps includes FG.
+    Q_PROPERTY(double processedFps READ processedFps NOTIFY snapshotChanged)
+    Q_PROPERTY(bool processedFpsKnown READ processedFpsKnown NOTIFY snapshotChanged)
     Q_PROPERTY(double submitFps READ submitFps NOTIFY snapshotChanged)
     Q_PROPERTY(bool submitFpsKnown READ submitFpsKnown NOTIFY snapshotChanged)
     // 1% low of the presents over the last ten seconds (FramePaceWindow).
@@ -926,6 +929,8 @@ public:
     double sourceAspect() const;
     double previewAspect() const;
 
+    double processedFps() const;
+    bool processedFpsKnown() const;
     double submitFps() const;
     bool submitFpsKnown() const;
     double submitLowFps() const;

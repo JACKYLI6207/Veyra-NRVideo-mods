@@ -65,6 +65,18 @@ static bool xessPresenting(const engine::PlayerSnapshot& s) {
     return s.fgActive && s.applied.frameGenerationBackend == engine::FrameGenerationBackend::XeSS &&
         s.metrics.flow.xessSdkSubmitFps > 0;
 }
+double QmlPlayerBridge::processedFps() const {
+    const auto& s = impl_->snapshot;
+    // Capture: prefer the measured input callback rate when the 1s window is warm.
+    if (s.capture && s.captureFps > 0.5) return s.captureFps;
+    return s.fps;
+}
+bool QmlPlayerBridge::processedFpsKnown() const {
+    const auto& s = impl_->snapshot;
+    if (!s.running || s.image) return false;
+    if (s.capture && s.captureFps > 0.5) return true;
+    return s.metrics.flow.rateWindowReady && s.fps > 0.05;
+}
 double QmlPlayerBridge::submitFps() const {
     const auto& s = impl_->snapshot;
     return xessPresenting(s) ? s.metrics.flow.xessSdkSubmitFps : s.submissionFps.value_or(0.0);

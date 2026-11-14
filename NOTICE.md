@@ -25,7 +25,9 @@ This fork does **not** claim ownership of the original Veyra project.
 3. **Window follow rate:** when capturing a window with FPS follow (0), track the window’s live content present rate (duplicate WGC frames dropped), not the monitor refresh; monitor capture still follows display refresh.
 4. **Compare split UI:** 0–100% split slider and swap-sides toggle for 原画/增强分屏 (drag on picture still works).
 5. **Window chrome maximize:** always-visible min/max/close; maximize fills the monitor work area while keeping Pro/Node panels (distinct from picture-only fullscreen).
-6. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
+6. **Split + frame generation:** in 分屏, the enhanced side keeps FG; the original side holds real source frames (no flash). Full-original compare still pauses FG. XeSS whole-buffer FG stays off during compare; application FG (DLSS/VFG/FSR) remains.
+7. **Split FPS badges:** left/right live FPS overlays (原画 = source/input rate, 增强 = submit/FG rate), including picture fullscreen.
+8. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
 
 ## Third-party / proprietary
 

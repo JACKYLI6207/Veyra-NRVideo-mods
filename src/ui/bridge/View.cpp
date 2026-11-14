@@ -179,11 +179,10 @@ void QmlPlayerBridge::setCompareMode(int value) {
     impl_->compareMode = value;
     if (!impl_->holdKeyDown) impl_->engine.comparison(value, impl_->compareBase, float(impl_->compareSplit), impl_->compareSwap);
     veyra::log::info("ui-compare", std::format("mode={} base={} swap={} split={:.3f}", value, impl_->compareBase, impl_->compareSwap, impl_->compareSplit));
-    // Comparison shows real frames only (a generated frame has no original to set beside
-    // it), so frame generation pauses while it is on. A field user left split compare on
-    // for 24 minutes and reported "补帧无效" (logs9, 2026-10-01): say so.
-    if (value != 0 && impl_->snapshot.running && impl_->snapshot.applied.multiplier > 1)
-        emit notice(tr("对比模式下补帧暂停（对比只能用真实帧），关闭对比后自动恢复"), false);
+    // 只看原画 pauses FG (no enhanced half). 分屏 keeps FG on the enhanced side;
+    // the original half holds the last real source/base reference between source frames.
+    if (value == 1 && impl_->snapshot.running && impl_->snapshot.applied.multiplier > 1)
+        emit notice(tr("只看原画时补帧暂停，关闭对比或改回分屏后自动恢复"), false);
     emit compareChanged();
 }
 bool QmlPlayerBridge::compareBase() const { return impl_->compareBase; }

@@ -422,21 +422,32 @@ VPage {
             Repeater {
                 model: veyra.compareMode === 2 && veyra.hasSource
                        ? (veyra.compareSwap
-                          ? [{ t: qsTr("增强后（预览）"), left: true }, { t: qsTr("原画"), left: false }]
-                          : [{ t: qsTr("原画"), left: true }, { t: qsTr("增强后（预览）"), left: false }])
+                          ? [{ left: true, original: false }, { left: false, original: true }]
+                          : [{ left: true, original: true }, { left: false, original: false }])
                        : []
                 delegate: Rectangle {
                     required property var modelData
                     objectName: "export-compare-label-" + (modelData.left ? "left" : "right")
                     readonly property bool videoCover: true
                     property real coverRadius: 6
+                    readonly property bool known: modelData.original ? veyra.processedFpsKnown : veyra.submitFpsKnown
+                    readonly property string fpsText: known
+                                                     ? (modelData.original ? veyra.processedFps : veyra.submitFps).toFixed(1)
+                                                     : qsTr("—")
                     x: modelData.left ? 10 : videoArea.width - width - 10
                     y: 10
                     width: lb.implicitWidth + 16
                     height: lb.implicitHeight + 8
                     radius: 6
                     color: Qt.rgba(0, 0, 0, 0.6)
-                    Text { id: lb; anchors.centerIn: parent; text: modelData.t; color: "#FFFFFF"; font.family: Theme.fontUi; font.pixelSize: 11 }
+                    Text {
+                        id: lb
+                        anchors.centerIn: parent
+                        text: (modelData.original ? qsTr("原画") : qsTr("增强")) + "  " + fpsText + " fps"
+                        color: "#FFFFFF"
+                        font.family: Theme.fontUi
+                        font.pixelSize: 11
+                    }
                 }
             }
         }

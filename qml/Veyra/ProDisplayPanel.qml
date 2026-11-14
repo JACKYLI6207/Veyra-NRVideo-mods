@@ -18,7 +18,8 @@ ColumnLayout {
                    ? (veyra.compareSwap
                       ? qsTr("在画面上按住左键拖动分割线：左边增强、右边原画。也可在下方用百分比调节。")
                       : qsTr("在画面上按住左键拖动分割线：左边原画、右边增强。也可在下方用百分比调节。"))
-                   : "") + (veyra.compareMode !== 0 ? qsTr("对比时补帧暂停，关闭对比后恢复") : "")
+                   : "") + (veyra.compareMode === 1 ? qsTr("只看原画时补帧暂停，关闭对比后恢复")
+                   : veyra.compareMode === 2 ? qsTr("分屏时增强侧补帧仍生效；原画侧跟真实源帧。") : "")
             VSeg {
                 objectName: "display-compare"
                 options: [{ id: "0", label: qsTr("关闭", "off") }, { id: "2", label: qsTr("分屏") }, { id: "1", label: qsTr("只看原画") }]

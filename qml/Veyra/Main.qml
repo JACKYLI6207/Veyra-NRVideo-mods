@@ -250,6 +250,42 @@ Window {
         }
     }
 
+    // Split-compare FPS badges sit on Main (not inside a page) so they survive
+    // picture fullscreen, when pages are hidden and only videoHost remains.
+    Repeater {
+        model: veyra.compareMode === 2 && veyra.hasSource && root.page !== "home" && root.page !== "set" && root.page !== "exp"
+               ? (veyra.compareSwap
+                  ? [{ left: true, original: false }, { left: false, original: true }]
+                  : [{ left: true, original: true }, { left: false, original: false }])
+               : []
+        delegate: Rectangle {
+            required property var modelData
+            objectName: "compare-fps-" + (modelData.left ? "left" : "right")
+            readonly property bool videoCover: true
+            property real coverRadius: 6
+            readonly property bool known: modelData.original ? veyra.processedFpsKnown : veyra.submitFpsKnown
+            readonly property string fpsText: known
+                                             ? (modelData.original ? veyra.processedFps : veyra.submitFps).toFixed(1)
+                                             : qsTr("—")
+            z: 28
+            x: modelData.left ? videoHost.x + 10 : videoHost.x + videoHost.width - width - 10
+            y: videoHost.y + 10
+            width: lb.implicitWidth + 16
+            height: lb.implicitHeight + 8
+            radius: 6
+            color: Qt.rgba(0, 0, 0, 0.55)
+            visible: videoHost.width > 32 && videoHost.height > 32
+            Text {
+                id: lb
+                anchors.centerIn: parent
+                text: (modelData.original ? qsTr("原画") : qsTr("增强")) + "  " + fpsText + " fps"
+                color: "#FFFFFF"
+                font.family: Theme.fontUi
+                font.pixelSize: 12
+            }
+        }
+    }
+
     // Where the picture sits, per page, computed from the design's own layout
     // numbers rather than read from a laid-out child. A child reports 0x0 on the
     // frame the user opens a file, and that once produced a 1x1 swapchain.
