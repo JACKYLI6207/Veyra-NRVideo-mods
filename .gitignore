@@ -1,0 +1,35 @@
+# Build / IDE
+out/
+build/
+cmake-build-*/
+.vs/
+.idea/
+*.user
+*.suo
+*.VC.db
+CMakeUserPresets.json
+
+# Local staged SDKs (do not commit proprietary trees)
+third_party_local/nvidia/
+third_party_local/intel/
+third_party_local/amd/
+!third_party_local/README.md
+
+# Runtime / personal
+runtime_local/
+**/user-data*/
+**/qml-preferences*.json
+**/*credentials*
+**/*.pem
+**/*.pfx
+.env
+.env.*
+logs/
+*.log
+
+# Packages / caches
+*.zip
+*.7z
+__pycache__/
+.qmlcache/
+qmlcache*/
