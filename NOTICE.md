@@ -7,7 +7,7 @@ This repository is a **modified fork / derivative** of:
 - **Project:** Veyra (Veyra-NRVideo)
 - **Upstream:** https://github.com/Likely7/Veyra-NRVideo
 - **Upstream licence (original Veyra code):** GNU General Public License v3.0 (`LICENSE`)
-- **Base corresponding source:** Veyra 2.1.6 application source
+- **Base corresponding source:** Veyra **2.2.0** application source
 
 Original authors and contributors retain copyright on upstream code.
 This fork does **not** claim ownership of the original Veyra project.
@@ -17,6 +17,7 @@ This fork does **not** claim ownership of the original Veyra project.
 - **Maintainer (modifications):** JACKYLI6207
 - **Repository:** https://github.com/JACKYLI6207/Veyra-NRVideo-mods
 - **Licence for combined work:** GPL-3.0 (same as upstream). Modifications are released under GPL-3.0.
+- **Release tag (this packaging):** `v2.2.0-mods.1`
 
 ### Changes in this fork (summary)
 
@@ -27,7 +28,9 @@ This fork does **not** claim ownership of the original Veyra project.
 5. **Window chrome maximize:** always-visible min/max/close; maximize fills the monitor work area while keeping Pro/Node panels (distinct from picture-only fullscreen).
 6. **Split + frame generation:** in 分屏, the enhanced side keeps FG; the original side holds real source frames (no flash). Full-original compare still pauses FG. XeSS whole-buffer FG stays off during compare; application FG (DLSS/VFG/FSR) remains.
 7. **Split FPS badges:** left/right live FPS overlays (原画 = source/input rate, 增强 = submit/FG rate), including picture fullscreen.
-8. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
+8. **GPU select = compute pin:** choosing a specific GPU in 性能設定 pins both monitor and compute/enhance/FG/export to that card; 「自动」 uses the highest-performance adapter (no separate follow toggle).
+9. **Startup music:** off by default; only plays when `introMusic` is explicitly enabled.
+10. **Helper tools (optional):** `tools/gpu-bind/` — Windows helper sources to write `monitorGpu` / `computeOnMonitorGpu` for portable builds.
 
 ## Third-party / proprietary
 

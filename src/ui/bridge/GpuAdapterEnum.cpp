@@ -190,7 +190,7 @@ std::vector<Adapter> listAdapters(const std::set<uint64_t>& measuredEngineLuids)
         }
         a.name = desc; // slot prefix after PCI sort
         if (isIntegrated(d.VendorId, desc))
-            a.slotIndex = -1; // marker: iGPU, no discrete slot
+            a.slotIndex = -1; // marker: iGPU, unknown discrete slot
         adapters.push_back(std::move(a));
     }
 

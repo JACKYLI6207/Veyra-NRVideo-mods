@@ -2,6 +2,8 @@
 
 本倉庫是 [Likely7/Veyra-NRVideo](https://github.com/Likely7/Veyra-NRVideo) 的**非官方修改版**，以 **GPL-3.0** 授權再發布。
 
+目前打包基準：**上游 Veyra 2.2.0** · 標籤 **`v2.2.0-mods.1`**
+
 請先閱讀：
 
 - [NOTICE.md](NOTICE.md) — 來源聲明、修改說明、第三方限制
@@ -19,11 +21,13 @@
 5. 右上角常駐視窗控制：最小化／最大化／關閉；最大化為整窗含功能欄（貼齊工作區），與畫面全螢幕（F11）分開  
 6. 分屏補幀：增強側補幀仍生效；原畫側跟真實源幀（避免閃爍）。「只看原畫」仍會暫停補幀  
 7. 分屏幀率標籤：左上／右上顯示原畫與增強（含補幀）目前幀率；畫面全螢幕時也會顯示  
-8. 可選工具原始碼：`tools/gpu-bind/`（指定運算顯卡輔助）
+8. 性能設定選顯卡：選哪張就監控＋運算都用哪張；「自动」才走最強卡（無多餘開關；換卡後請重新打開片源）  
+9. 啟動音樂：預設關閉（設置裡明確開啟才播）  
+10. 可選工具原始碼：`tools/gpu-bind/`（指定運算顯卡輔助）
 
 ## 編譯
 
-請參考上游文件（如 `docs/BUILD_2.1.6_*.md`、`docs/DEVELOPMENT.md`），並自行準備 Qt 6.8.3、FFmpeg、NVIDIA／Intel／AMD SDK 等依賴。`third_party_local/README.md` 說明本倉庫刻意未收錄的 SDK 目錄。
+請參考上游文件（如 `docs/BUILD_2.2.0.md`、`docs/DEVELOPMENT.md`），並自行準備 Qt 6.8.3、FFmpeg、OpenSSL、NVIDIA／Intel／AMD SDK 等依賴。`third_party_local/README.md` 說明本倉庫刻意未收錄的 SDK 目錄。
 
 ## 聲明
 

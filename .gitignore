@@ -1,35 +1,31 @@
-# Build / IDE
-out/
-build/
-cmake-build-*/
-.vs/
-.idea/
-*.user
-*.suo
-*.VC.db
+# Proprietary and local-only inputs
+/nvngx_dlssnr.dll
+/renodx-dlss5-1.addon64
+/runtime_local/
+/runtime/
+/third_party_local/
+/reference_local/
+
+# Build outputs and local presets
+/out/
+/build/
+/.vs/
+/vcpkg_installed/
 CMakeUserPresets.json
 
-# Local staged SDKs (do not commit proprietary trees)
-third_party_local/nvidia/
-third_party_local/intel/
-third_party_local/amd/
-!third_party_local/README.md
+# Diagnostics and captures
+/captures/
+/logs/
+*.pdb
+*.ilk
+*.dmp
+*.etl
 
-# Runtime / personal
-runtime_local/
-**/user-data*/
-**/qml-preferences*.json
-**/*credentials*
-**/*.pem
-**/*.pfx
-.env
-.env.*
-logs/
-*.log
-
-# Packages / caches
-*.zip
-*.7z
+# Unattended loop local control and scratch
+/loop/STOP
+/loop/tmp/
+/loop/local/
+# User-authorized runtime music is distributed only in binary packages.
+startup-music.mp3
+BGM.MP3
 __pycache__/
-.qmlcache/
-qmlcache*/
